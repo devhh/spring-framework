@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -118,13 +118,10 @@ public final class Conventions {
 		}
 		else {
 			valueClass = parameter.getParameterType();
-			ReactiveAdapterRegistry reactiveAdapterRegistry = ReactiveAdapterRegistry.getSharedInstance();
-			if (reactiveAdapterRegistry.hasAdapters()) {
-				ReactiveAdapter adapter = reactiveAdapterRegistry.getAdapter(valueClass);
-				if (adapter != null && !adapter.getDescriptor().isNoValue()) {
-					reactiveSuffix = ClassUtils.getShortName(valueClass);
-					valueClass = parameter.nested().getNestedParameterType();
-				}
+			ReactiveAdapter adapter = ReactiveAdapterRegistry.getSharedInstance().getAdapter(valueClass);
+			if (adapter != null && !adapter.getDescriptor().isNoValue()) {
+				reactiveSuffix = ClassUtils.getShortName(valueClass);
+				valueClass = parameter.nested().getNestedParameterType();
 			}
 		}
 
@@ -207,13 +204,10 @@ public final class Conventions {
 		}
 		else {
 			valueClass = resolvedType;
-			ReactiveAdapterRegistry reactiveAdapterRegistry = ReactiveAdapterRegistry.getSharedInstance();
-			if (reactiveAdapterRegistry.hasAdapters()) {
-				ReactiveAdapter adapter = reactiveAdapterRegistry.getAdapter(valueClass);
-				if (adapter != null && !adapter.getDescriptor().isNoValue()) {
-					reactiveSuffix = ClassUtils.getShortName(valueClass);
-					valueClass = ResolvableType.forMethodReturnType(method).getGeneric().toClass();
-				}
+			ReactiveAdapter adapter = ReactiveAdapterRegistry.getSharedInstance().getAdapter(valueClass);
+			if (adapter != null && !adapter.getDescriptor().isNoValue()) {
+				reactiveSuffix = ClassUtils.getShortName(valueClass);
+				valueClass = ResolvableType.forMethodReturnType(method).getGeneric().toClass();
 			}
 		}
 
@@ -231,11 +225,11 @@ public final class Conventions {
 		if (!attributeName.contains("-")) {
 			return attributeName;
 		}
-		char[] chars = attributeName.toCharArray();
-		char[] result = new char[chars.length -1]; // not completely accurate but good guess
+		char[] result = new char[attributeName.length() -1]; // not completely accurate but good guess
 		int currPos = 0;
 		boolean upperCaseNext = false;
-		for (char c : chars) {
+		for (int i = 0; i < attributeName.length(); i++ ) {
+			char c = attributeName.charAt(i);
 			if (c == '-') {
 				upperCaseNext = true;
 			}
