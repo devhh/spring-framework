@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,17 +62,23 @@ public class InvocableHandlerMethod extends HandlerMethod {
 	private static final Object NO_ARG_VALUE = new Object();
 
 
-	private List<HandlerMethodArgumentResolver> resolvers = new ArrayList<>();
+	private final List<HandlerMethodArgumentResolver> resolvers = new ArrayList<>();
 
 	private ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
 
 	private ReactiveAdapterRegistry reactiveAdapterRegistry = ReactiveAdapterRegistry.getSharedInstance();
 
 
+	/**
+	 * Create an instance from a {@code HandlerMethod}.
+	 */
 	public InvocableHandlerMethod(HandlerMethod handlerMethod) {
 		super(handlerMethod);
 	}
 
+	/**
+	 * Create an instance from a bean instance and a method.
+	 */
 	public InvocableHandlerMethod(Object bean, Method method) {
 		super(bean, method);
 	}
@@ -111,12 +117,9 @@ public class InvocableHandlerMethod extends HandlerMethod {
 	}
 
 	/**
-	 * Configure a reactive registry. This is needed for cases where the response
-	 * is fully handled within the controller in combination with an async void
-	 * return value.
-	 * <p>By default this is an instance of {@link ReactiveAdapterRegistry} with
-	 * default settings.
-	 * @param registry the registry to use
+	 * Configure a reactive adapter registry. This is needed for cases where the response is
+	 * fully handled within the controller in combination with an async void return value.
+	 * <p>By default this is a {@link ReactiveAdapterRegistry} with default settings.
 	 */
 	public void setReactiveAdapterRegistry(ReactiveAdapterRegistry registry) {
 		this.reactiveAdapterRegistry = registry;
@@ -128,7 +131,7 @@ public class InvocableHandlerMethod extends HandlerMethod {
 	 * @param exchange the current exchange
 	 * @param bindingContext the binding context to use
 	 * @param providedArgs optional list of argument values to match by type
-	 * @return a Mono with a {@link HandlerResult}.
+	 * @return a Mono with a {@link HandlerResult}
 	 */
 	public Mono<HandlerResult> invoke(
 			ServerWebExchange exchange, BindingContext bindingContext, Object... providedArgs) {

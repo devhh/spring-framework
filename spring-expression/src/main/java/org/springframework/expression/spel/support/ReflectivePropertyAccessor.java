@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ import org.springframework.util.StringUtils;
 
 /**
  * A powerful {@link PropertyAccessor} that uses reflection to access properties
- * for reading and possibly also for writing.
+ * for reading and possibly also for writing on a target instance.
  *
  * <p>A property can be referenced through a public getter method (when being read)
  * or a public setter method (when being written), and also as a public field.
@@ -96,8 +96,8 @@ public class ReflectivePropertyAccessor implements PropertyAccessor {
 	}
 
 	/**
-	 * Create a new property accessor for reading and possibly writing.
-	 * @param allowWrite whether to also allow for write operations
+	 * Create a new property accessor for reading and possibly also writing.
+	 * @param allowWrite whether to allow write operations on a target instance
 	 * @since 4.3.15
 	 * @see #canWrite
 	 */
@@ -327,6 +327,7 @@ public class ReflectivePropertyAccessor implements PropertyAccessor {
 	}
 
 	/**
+	 * Get the last read invoker pair.
 	 * @deprecated as of 4.3.15 since it is not used within the framework anymore
 	 */
 	@Deprecated
@@ -384,10 +385,10 @@ public class ReflectivePropertyAccessor implements PropertyAccessor {
 	@Nullable
 	protected Method findGetterForProperty(String propertyName, Class<?> clazz, boolean mustBeStatic) {
 		Method method = findMethodForProperty(getPropertyMethodSuffixes(propertyName),
-				 "get", clazz, mustBeStatic, 0, ANY_TYPES);
+				"get", clazz, mustBeStatic, 0, ANY_TYPES);
 		if (method == null) {
 			method = findMethodForProperty(getPropertyMethodSuffixes(propertyName),
-					 "is", clazz, mustBeStatic, 0, BOOLEAN_TYPES);
+					"is", clazz, mustBeStatic, 0, BOOLEAN_TYPES);
 		}
 		return method;
 	}
@@ -420,6 +421,17 @@ public class ReflectivePropertyAccessor implements PropertyAccessor {
 	}
 
 	/**
+	 * Return class methods ordered with non-bridge methods appearing higher.
+	 */
+	private Method[] getSortedMethods(Class<?> clazz) {
+		return this.sortedMethodsCache.computeIfAbsent(clazz, key -> {
+			Method[] methods = key.getMethods();
+			Arrays.sort(methods, (o1, o2) -> (o1.isBridge() == o2.isBridge() ? 0 : (o1.isBridge() ? 1 : -1)));
+			return methods;
+		});
+	}
+
+	/**
 	 * Determine whether the given {@code Method} is a candidate for property access
 	 * on an instance of the given target class.
 	 * <p>The default implementation considers any method as a candidate, even for
@@ -430,17 +442,6 @@ public class ReflectivePropertyAccessor implements PropertyAccessor {
 	 */
 	protected boolean isCandidateForProperty(Method method, Class<?> targetClass) {
 		return true;
-	}
-
-	/**
-	 * Return class methods ordered with non-bridge methods appearing higher.
-	 */
-	private Method[] getSortedMethods(Class<?> clazz) {
-		return this.sortedMethodsCache.computeIfAbsent(clazz, key -> {
-			Method[] methods = key.getMethods();
-			Arrays.sort(methods, (o1, o2) -> (o1.isBridge() == o2.isBridge() ? 0 : (o1.isBridge() ? 1 : -1)));
-			return methods;
-		});
 	}
 
 	/**
@@ -614,8 +615,8 @@ public class ReflectivePropertyAccessor implements PropertyAccessor {
 
 		@Override
 		public String toString() {
-			return "CacheKey [clazz=" + this.clazz.getName() + ", property=" + this.property + ", " +
-					this.property + ", targetIsClass=" + this.targetIsClass + "]";
+			return "PropertyCacheKey [clazz=" + this.clazz.getName() + ", property=" + this.property +
+					", targetIsClass=" + this.targetIsClass + "]";
 		}
 
 		@Override
@@ -639,6 +640,9 @@ public class ReflectivePropertyAccessor implements PropertyAccessor {
 	 */
 	public static class OptimalPropertyAccessor implements CompilablePropertyAccessor {
 
+		/**
+		 * The member being accessed.
+		 */
 		public final Member member;
 
 		private final TypeDescriptor typeDescriptor;

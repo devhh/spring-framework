@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 import javax.servlet.AsyncContext;
 import javax.servlet.DispatcherType;
 import javax.servlet.RequestDispatcher;
@@ -58,6 +59,7 @@ import javax.servlet.http.Part;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.LinkedCaseInsensitiveMap;
@@ -652,11 +654,14 @@ public class MockHttpServletRequest implements HttpServletRequest {
 
 	@Override
 	public String getServerName() {
-		String host = getHeader(HttpHeaders.HOST);
+		String rawHostHeader = getHeader(HttpHeaders.HOST);
+		String host = rawHostHeader;
 		if (host != null) {
 			host = host.trim();
 			if (host.startsWith("[")) {
-				host = host.substring(1, host.indexOf(']'));
+				int indexOfClosingBracket = host.indexOf(']');
+				Assert.state(indexOfClosingBracket > -1, () -> "Invalid Host header: " + rawHostHeader);
+				host = host.substring(0, indexOfClosingBracket + 1);
 			}
 			else if (host.contains(":")) {
 				host = host.substring(0, host.indexOf(':'));
@@ -674,12 +679,15 @@ public class MockHttpServletRequest implements HttpServletRequest {
 
 	@Override
 	public int getServerPort() {
-		String host = getHeader(HttpHeaders.HOST);
+		String rawHostHeader = getHeader(HttpHeaders.HOST);
+		String host = rawHostHeader;
 		if (host != null) {
 			host = host.trim();
 			int idx;
 			if (host.startsWith("[")) {
-				idx = host.indexOf(':', host.indexOf(']'));
+				int indexOfClosingBracket = host.indexOf(']');
+				Assert.state(indexOfClosingBracket > -1, () -> "Invalid Host header: " + rawHostHeader);
+				idx = host.indexOf(':', indexOfClosingBracket);
 			}
 			else {
 				idx = host.indexOf(':');
@@ -951,12 +959,18 @@ public class MockHttpServletRequest implements HttpServletRequest {
 
 	public void setCookies(@Nullable Cookie... cookies) {
 		this.cookies = (ObjectUtils.isEmpty(cookies) ? null : cookies);
-		this.headers.remove(HttpHeaders.COOKIE);
-		if (this.cookies != null) {
-			Arrays.stream(this.cookies)
-					.map(c -> c.getName() + '=' + (c.getValue() == null ? "" : c.getValue()))
-					.forEach(value -> doAddHeaderValue(HttpHeaders.COOKIE, value, false));
+		if (this.cookies == null) {
+			removeHeader(HttpHeaders.COOKIE);
 		}
+		else {
+			doAddHeaderValue(HttpHeaders.COOKIE, encodeCookies(this.cookies), true);
+		}
+	}
+
+	private static String encodeCookies(@NonNull Cookie... cookies) {
+		return Arrays.stream(cookies)
+				.map(c -> c.getName() + '=' + (c.getValue() == null ? "" : c.getValue()))
+				.collect(Collectors.joining("; "));
 	}
 
 	@Override
@@ -1272,6 +1286,7 @@ public class MockHttpServletRequest implements HttpServletRequest {
 	 * Otherwise it simply returns the current session id.
 	 * @since 4.0.3
 	 */
+	@Override
 	public String changeSessionId() {
 		Assert.isTrue(this.session != null, "The request does not have a session");
 		if (this.session instanceof MockHttpSession) {
